@@ -1,0 +1,466 @@
+#!/bin/sh
+
+# Patient medical records file
+medical_record="medicalRecord.txt"
+# Medical test data file
+test_file="medicalTest.txt"
+
+# Function to validate Patient ID (7 digits)
+validate_patient_id() {
+  case "$1" in
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9]) return 0 ;;  # Valid
+    *) echo "Error: Patient ID must be a 7-digit integer."
+       return 1 ;;
+  esac
+}
+
+validate_test_name() {
+  case "$1" in
+    [Hh]gb) return 0 ;;
+    BGT) return 0 ;;
+    bgt) return 0 ;;
+    [Ll][Dd][Ll]) return 0 ;;
+    systole) return 0 ;;
+    diastole) return 0 ;;
+    *) echo "Error: The test name must be one of the following: (Hgb,BGT,LDL,systole,diastole) "
+       return 1 ;;
+  esac
+}
+
+# Function to validate Test Date (YYYY-MM)
+validate_test_date() {
+  case "$1" in
+    [0-9][0-9][0-9][0-9]-0[1-9]|[0-9][0-9][0-9][0-9]-1[0-2]) return 0 ;;  # Valid
+    *) echo "Error: Test date must be in the format YYYY-MM."
+       return 1 ;;
+  esac
+}
+
+validate_unit(){
+  case "$1" in
+    "mg/dL") return 0 ;;
+    "g/dL") return 0 ;;
+    "mm Hg") return 0 ;;
+    *) echo "Error: The unit must be one of the following: mg/dL , g/dL , mm Hg"
+       return 1 ;;
+  esac
+}
+# Function to validate Test Status
+validate_status() {
+  case "$1" in
+    [Pp]ending) return 0 ;;
+    [Cc]ompleted) return 0 ;;
+    [Rr]eviewed) return 0 ;;
+    *) echo "Error: Status must be one of the following: Pending, Completed, Reviewed."
+       return 1 ;;
+  esac
+}
+
+# Function to add a new medical test record
+add_test_record() {
+  while true; do
+    echo "Enter Patient ID (7 digits): "
+    read patient_id
+    validate_patient_id "$patient_id" 
+    if [ $? -eq 0 ]; then
+       break
+    else
+       echo "Invalid ID"
+    fi
+  done
+
+  while true; do
+  echo "Enter Test Name (Hgb,BGT,LDL,systole,diastole): "
+  read test_name
+  validate_test_name "$test_name" 
+  if [ $? -eq 0 ]; then
+       break
+    else
+       echo "Invalid test name"
+    fi
+  done
+
+
+  while true; do
+  echo "Enter Test Date (YYYY-MM): "
+  read test_date
+  validate_test_date "$test_date" 
+  if [ $? -eq 0 ]; then
+       break
+    else
+       echo "Invalid Date"
+    fi
+  done
+
+
+  echo "Enter Result : "
+  read result_value
+  result=$(printf "%s" "$result_value")
+  
+  while true; do
+  echo "Enter the Unit (mg/dL, g/dL, mm Hg):"
+  read Unit
+  validate_unit "$Unit" 
+  if [ $? -eq 0 ]; then
+       break
+    else
+       echo "Invalid status"
+    fi
+  done
+  
+  while true; do
+  echo "Enter Status (Pending/Completed/Reviewed): "
+  read status
+  validate_status "$status" 
+   if [ $? -eq 0 ]; then
+       break
+    else
+       echo "Invalid status"
+    fi
+  done
+  status=$(printf "%s" "$status")
+
+  # Append the record to the medicalRecord file
+  echo "$patient_id:$test_name,$test_date,$result,$status" >> "$medical_record"
+  echo "Record added successfully!"
+}
+
+search(){
+   grep "$1" "$medical_record" | while IFS=: read -r id testInfo; do
+       testName=$(echo "$testInfo" | cut -d':' -f2 | cut -d',' -f1)
+       testResult=$(echo "$testInfo" | cut -d',' -f3)
+     
+       testRange=$(grep "^$testName" medicalTest.txt | cut -d';' -f2 )
+       
+       greater_than=$(echo "$testRange" | grep "^>" | cut -d ',' -f1 | tr -d '>' | tr -d ' ')
+       less_than=$(echo "$testRange" | grep "<" | cut -d ',' -f2 | tr -d '<' | tr -d ' ')
+       
+       # Handle cases where greater_than or less_than might be empty
+       if [ -z "$greater_than" ]; then
+           greater_than=0  # Assuming 0 as default lower bound if not specified
+       fi
+       if [ -z "$less_than" ]; then
+           less_than=999999  # Assuming a very large number as upper bound if not specified
+       fi
+
+       # Ensure testResult is numeric
+       case "$testResult" in
+           ''|*[!0-9.]*) 
+               echo "$testName: Invalid numeric value '$testResult'. Skipping comparison."
+               continue
+               ;;
+       esac
+
+        # Compare the result with the range using standard POSIX shell syntax
+       if [ "$(echo "$testResult < $less_than" | bc)" -ne 1 ]; then
+           echo "Patient ID: $id | Test Name: $testName | Test Result: $testResult | Expected Range: >$greater_than, <$less_than | Status: up normal"
+       else 
+          echo "no up normal for this patient"
+       fi
+   done
+}
+
+search_up_normal(){
+   while IFS=: read -r id testInfo; do
+       testName=$(echo "$testInfo" | cut -d':' -f2 | cut -d',' -f1)
+       testResult=$(echo "$testInfo" | cut -d',' -f3)
+       
+       testRange=$(grep "^$testName" medicalTest.txt | cut -d';' -f2 )
+       
+       greater_than=$(echo "$testRange" | grep "^>" | cut -d ',' -f1 | tr -d '>' | tr -d ' ')
+       less_than=$(echo "$testRange" | grep "<" | cut -d ',' -f2 | tr -d '<' | tr -d ' ')
+       
+       # Handle cases where greater_than or less_than might be empty
+       if [ -z "$greater_than" ]; then
+           greater_than=0  # Assuming 0 as default lower bound if not specified
+       fi
+       if [ -z "$less_than" ]; then
+           less_than=999999  # Assuming a very large number as upper bound if not specified
+       fi
+
+       # Ensure testResult is numeric
+       case "$testResult" in
+           ''|*[!0-9.]*) 
+               continue  # Skip invalid numeric values
+               ;;
+       esac
+
+       # Compare the result with the range using standard POSIX shell syntax
+       if [ "$(echo "$testResult < $less_than" | bc)" -ne 1 ]; then
+           echo "Patient ID: $id | Test Name: $testName | Test Result: $testResult | Expected Range: >$greater_than, <$less_than | Status: up normal" 
+          
+       fi
+   done < "$medical_record"
+}
+
+
+# Function to search tests by patient ID
+search_tests_by_patient_id() {
+  
+  echo "Enter Patient ID (7 digits): "
+  read patient_id
+  while true 
+    do 
+  if grep -q "^$patient_id" "$medical_record"
+   then
+     echo "Choose an option:"
+     echo "1. Retrieve all patient tests"
+     echo "2. Retrieve all up normal patient tests"
+     echo "3. Retrieve all patient tests in a given specific period"
+     echo "4. Retrieve all patient tests based on test status"
+     echo "5. Exit"
+     read choice
+  else
+     echo "Error: Patient ID '$patient_id' not found in medicalRecord.txt"
+     return
+  fi
+  case $choice in
+    1) grep "^$patient_id" "$medical_record" ;;
+    2) search  "$patient_id" ;;
+    3)
+       while true; do
+    
+       echo "Enter start date (YYYY-MM):"
+       read start_date
+
+       echo "Enter end date (YYYY-MM):"
+        read end_date
+
+    # Check if the start date exists for the given patient ID
+        if grep "^$patient_id" "$medical_record" | grep -q "$start_date"; then
+        # Check if the end date exists for the given patient ID
+           if grep "^$patient_id" "$medical_record" | grep -q "$end_date"; then
+              grep "^$patient_id" "$medical_record" | awk -F"," -v start="$start_date" -v end="$end_date" '$2 >= start && $2 <= end'
+              break
+           else
+              echo "Error: End date not found. Please enter a valid end date."
+        fi
+       else
+           echo "Error: Start date not found. Please enter a valid start date."
+       fi
+   done ;; 
+    4)
+      while true; do
+    echo "Enter status (Pending/Completed/Reviewed):"
+    read status
+    
+    # Validate the status format
+    if ! validate_status "$status"; then
+        continue  # If the status is invalid, prompt again
+    fi
+
+    if grep "^$patient_id" "$medical_record" | grep -i "$status"; then
+        break  # Exit the loop if the patient ID and status are found
+    else
+        echo "Error: status not found for the patient. Please try again."
+    fi
+    done
+      ;;
+    5) 
+       echo "Exiting..."
+       break ;;   
+    *) echo "Invalid choice." ;;
+  esac
+ done
+}
+
+# Function to calculate average test value for each test
+calculate_average_test_value() {
+  # Get all unique test names
+  test_names=$(cut -d':' -f2 "$medical_record" | cut -d',' -f1 | sort | uniq | tr -d ' ')
+  
+  for test_name in $test_names; do
+    total=0
+    count=0
+    
+    while read -r line; do
+      current_test_name=$(echo "$line" | cut -d':' -f2 | cut -d',' -f1)
+      result_value=$(echo "$line" | cut -d',' -f3)
+      
+      if [ "$current_test_name" = "$test_name" ]; then
+        total=$(echo "$total + $result_value" | bc)
+        count=$((count + 1))
+      fi
+    done < "$medical_record"
+
+    if [ "$count" -gt 0 ]; then
+      avg=$(echo "scale=2; $total / $count" | bc)
+      echo "Average value for $test_name: $avg"
+    else
+      echo "No records found for $test_name."
+    fi
+  done
+}
+
+# Function to delete a test result
+delete_test_result() {
+  while true; do
+    echo "Enter Patient ID (7 digits): "
+    read patient_id
+    
+    # Validate the patient ID format first
+    if ! validate_patient_id "$patient_id"; then
+        continue
+    fi
+
+    # Check if the patient ID exists in the medical record file
+    if grep -q "^$patient_id" "$medical_record"; then
+        echo "Patient ID found."
+        grep "^$patient_id" "$medical_record"
+        break  # Exit the loop if the patient ID is found
+    else
+        echo "Error: Patient ID not found. Please enter a valid ID."
+    fi
+ done
+  
+  while true; do
+    echo "Enter Test Name (Hgb, BGT, LDL, systole, diastole): "
+    read test_name
+    
+    # Validate the test name format first
+    if ! validate_test_name "$test_name"; then
+        continue  # If the test name is invalid, prompt again
+    fi
+
+    # Check if the test name exists in the medical record file for the patient
+    if  grep "^$patient_id" "$medical_record" | grep -q "$test_name" ; then
+        echo "Test Name found."
+        break  # Exit the loop if the test name is found
+    else
+        echo "Error: test name not found for the patient. Please enter a valid test name."
+    fi
+  done
+  
+  while true; do
+  echo "Enter Test Date (YYYY-MM): "
+  read test_date
+  
+   # Validate the test name format first
+    if !  validate_test_date "$test_date"; then
+        continue  # If the date is invalid, prompt again
+    fi
+
+  # Check if the test name exists in the medical record file for the patient
+    if grep -q "$test_date" "$medical_record"; then
+        echo "date found."
+        break  # Exit the loop if the test name is found
+    else
+        echo "Error: Invalid date Please enter a valid date "
+    fi
+  done
+
+  grep -v "$patient_id:$test_name,"$test_date"" "$medical_record" > temp && mv temp "$medical_record"
+  echo "Test result deleted successfully."
+}
+
+# Function to update an existing test result
+update_test_result() {
+
+    while true; do
+        echo "Enter Patient ID (7 digits): "
+        read patient_id
+
+        # Validate the patient ID format first
+        if ! validate_patient_id "$patient_id"; then
+            continue
+        fi
+
+        # Check if the patient ID exists in the medical record file
+        if grep -q "^$patient_id" "$medical_record"; then
+            echo "Patient ID found."
+            grep "^$patient_id" "$medical_record"
+            break  # Exit the loop if the patient ID is found
+        else
+            echo "Error: Patient ID not found. Please enter a valid ID."
+        fi
+    done
+  
+    while true; do
+        echo "Enter Test Name (Hgb, BGT, LDL, systole, diastole): "
+        read test_name
+
+        # Validate the test name format first
+        if ! validate_test_name "$test_name"; then
+            continue  # If the test name is invalid, prompt again
+        fi
+
+        # Check if the test name exists in the medical record file for the patient
+        if grep "^$patient_id" "$medical_record" | grep -q "$test_name"; then
+            echo "Test Name found."
+            break  # Exit the loop if the test name is found
+        else
+            echo "Error: Test name not found for the patient. Please enter a valid test name."
+        fi
+    done
+
+    while true; do
+        echo "Enter Test Date (YYYY-MM): "
+        read test_date
+
+        # Validate the test date
+        if ! validate_test_date "$test_date"; then
+            continue  # If the date is invalid, prompt again
+        fi
+
+        # Check if the date exists in the medical record file for the patient
+        if grep "^$patient_id" "$medical_record" | grep -q "$test_name,$test_date"; then
+            echo "Date found."
+            break  # Exit the loop if the date is found
+        else
+            echo "Error: Invalid date. Please enter a valid date."
+        fi
+    done
+
+    # Find the line to update
+    line=$(grep "^$patient_id:$test_name,$test_date" "$medical_record")
+    if [ -z "$line" ]; then
+        echo "No matching record found."
+        return
+    fi
+
+    # Extract fields using cut
+    current_test_name=$(echo "$line" | cut -d':' -f2 | cut -d',' -f1 | tr -d ' ')
+    current_test_date=$(echo "$line" | cut -d',' -f2 | tr -d ' ')
+    current_result=$(echo "$line" | cut -d',' -f3 | tr -d ' ')
+    current_status=$(echo "$line" | cut -d',' -f4 | tr -d ' ')
+
+    echo "Current Test Value: $current_result"
+    echo "Enter new Test Value:"
+    read new_value
+    echo "Current Test Status: $current_status"
+    echo "Enter new Test Status (Pending/Completed/Reviewed):"
+    read new_status
+
+    # Construct the new line
+    new_line="$patient_id:$test_name,$test_date,$new_value,$new_status"
+
+    # Update the record in the file
+    sed -i.bak "/^$patient_id:$test_name,$test_date/d" "$medical_record"  # Remove the old line
+    echo "$new_line" >> "$medical_record"  # Append the new line
+
+    echo "Test record updated."
+}
+# Main menu loop
+while true
+do
+  echo "Medical Test Management System"
+  echo "1. Add a new medical test record"
+  echo "2. Search for a test by patient ID"
+  echo "3. Search for up normal tests"
+  echo "4. Calculate average test value"
+  echo "5. Update an existing test result"
+  echo "6. delete "
+  echo "7. Exit"
+  read choice
+
+  case $choice in
+    1) add_test_record ;;
+    2) search_tests_by_patient_id ;;
+    3) search_up_normal ;;
+    4) calculate_average_test_value ;;
+    5) update_test_result ;;
+    6) delete_test_result ;; 
+    7) exit 0 ;;
+    *) echo "Invalid choice. Please try again number from 1 to 7" ;;
+  esac
+done
