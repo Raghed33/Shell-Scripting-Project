@@ -28,9 +28,7 @@ Python (Object-Oriented Design)
 
 Text File-Based Data Storage
 
-## 🤝 Contribution
 
-Feel free to fork this repository and contribute enhancements by submitting pull requests!
 
 
 
