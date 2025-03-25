@@ -32,8 +32,6 @@ Text File-Based Data Storage
 
 Feel free to fork this repository and contribute enhancements by submitting pull requests!
 
-#👤 Author#
 
-[Your Name] - Developed as part of a Linux course project at [Your University].
 
 
