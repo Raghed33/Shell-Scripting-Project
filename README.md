@@ -1,10 +1,10 @@
-Medical Test Management System
+##🏥Medical Test Management System##
 
-Description
+#Description#
 
 This project is a Medical Test Management System developed as part of a university Linux course. It is a command-line application that allows users to efficiently store, manage, and retrieve medical test records using shell scripting and Python. The system handles patient records, test results, data validation, and exporting/importing functionalities.
 
-Features
+#Features#
 
 Add New Test Results: Store test results for individual patients.
 
@@ -20,10 +20,20 @@ Export Records: Convert all stored records into a CSV file for external use.
 
 Import Records: Load test results from a CSV file without overwriting existing records.
 
-Technologies Used
+#Technologies Used#
 
 Linux Shell Scripting
 
 Python (Object-Oriented Design)
 
 Text File-Based Data Storage
+
+#🤝 Contribution#
+
+Feel free to fork this repository and contribute enhancements by submitting pull requests!
+
+#👤 Author#
+
+[Your Name] - Developed as part of a Linux course project at [Your University].
+
+
