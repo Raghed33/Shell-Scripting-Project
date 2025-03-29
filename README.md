@@ -24,8 +24,6 @@ Import Records: Load test results from a CSV file without overwriting existing r
 
 Linux Shell Scripting
 
-Python (Object-Oriented Design)
-
 Text File-Based Data Storage
 
 
